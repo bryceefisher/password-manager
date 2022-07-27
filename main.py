@@ -2,13 +2,14 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice
 import pyperclip
+import json
 
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
 def pass_generate():
     pass_entry.delete(0, "end")
-    gen_pass = ''.join([choice('abcdefghijklmnopqrstuvwxyz0123456789%^*(-_=+)!@#$&,.') for i in range(15)])
+    gen_pass = ''.join([choice('abcdefghijklmnopqrstuvwxyz0123456789%^*(-_=+)!@#$&.') for i in range(15)])
     pass_entry.insert(0, gen_pass)
     pyperclip.copy(gen_pass)
     messagebox.showinfo(title="Password Manager", message="Password copied to clipboard")
@@ -20,7 +21,12 @@ def add_pass():
     web = website.get()
     em = email.get()
     word = password.get()
-
+    new_data = {
+        web: {
+            "email": em,
+            "password": word
+        }
+    }
     # Check length var is greater than zero
 
     if len(web) == 0 or len(em) == 0 or len(word) == 0:
@@ -28,15 +34,40 @@ def add_pass():
         return
 
     # User entry verification
+    else:
+        try:
+            with open("pass-data.json", "r") as file:
+                # Reading old data
+                data = json.load(file)
 
-    is_ok = messagebox.askokcancel(title=web,
-                                   message=f"\nWebsite: {web}\nUsername: {em}\nPassword: {word}\n\n Would you like "
-                                           f"to save?")
-    if is_ok:
-        with open("pass-data.csv", "a") as file:
-            file.write(f"{web}, {em}, {word}\n")
-        website_entry.delete(0, "end")
+        except FileNotFoundError:
+            with open("pass-data.json", "w") as file:
+                json.dump(new_data, file, indent=4)
+
+        else:
+            data.update(new_data)
+
+            with open("pass-data.json", "w") as file:
+                # Saving new data
+                json.dump(data, file, indent=4)
+
+        finally:
+            website_entry.delete(0, "end")
+            pass_entry.delete(0, "end")
+
+
+# ---------------------------- Search Password ------------------------------- #
+def search():
+    try:
         pass_entry.delete(0, "end")
+        search_entry = website_entry.get()
+        with open("pass-data.json") as file:
+            data = json.load(file)
+            search_pass = data[search_entry]["password"]
+            pass_entry.insert(0, search_pass)
+
+    except KeyError:
+        messagebox.showinfo(title="KeyError", message="No matching website was found!")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -57,8 +88,8 @@ website_label.grid(column=0, row=1)
 # Website Entry
 website = StringVar()
 website_entry = Entry(textvariable=website)
-website_entry.config(width=35)
-website_entry.grid(column=1, row=1, columnspan=2)
+website_entry.config(width=21)
+website_entry.grid(column=1, row=1, columnspan=1)
 website_entry.insert(0, "")
 website_entry.focus()
 
@@ -88,6 +119,10 @@ pass_entry.insert(0, "")
 # Generate Button
 gen_button = Button(text="Generate Password", font=("Arial", 10, "bold"), width=13, command=pass_generate)
 gen_button.grid(column=2, row=3)
+
+# Search Button
+gen_button = Button(text="Search", font=("Arial", 10, "bold"), width=13, command=search)
+gen_button.grid(column=2, row=1)
 
 # Add Button
 add_button = Button(text="Add", width=33, command=add_pass)
